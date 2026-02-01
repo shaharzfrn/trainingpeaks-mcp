@@ -99,6 +99,54 @@ class TestWorkoutDetail:
         assert workout.normalized_power == 220
         assert workout.avg_hr == 145
 
+    def test_parse_api_response_with_corrected_fields(self):
+        """Test parsing API response with 'if' and 'normalizedPowerActual' fields.
+
+        These field names differ from what you might expect:
+        - 'if' (not 'intensityFactor') for actual intensity factor
+        - 'normalizedPowerActual' (not 'normalizedPower') for NP
+        """
+        data = {
+            "workoutId": 1003,
+            "athleteId": 123,
+            "title": "Interval Workout",
+            "workoutTypeValueId": 2,
+            "workoutDay": "2025-01-15T00:00:00",
+            "startTime": "2025-01-15T18:30:00",
+            "completed": None,
+            "description": None,
+            "coachComments": None,
+            "distance": 30000.0,
+            "distancePlanned": None,
+            "totalTime": 1.0,
+            "totalTimePlanned": 1.0,
+            "heartRateAverage": 150,
+            "calories": 570,
+            "tssActual": 60.0,
+            "tssPlanned": 65.0,
+            "if": 0.78,
+            "ifPlanned": 0.82,
+            "normalizedPowerActual": 210.0,
+            "powerAverage": 160,
+            "elevationGain": 80.0,
+            "cadenceAverage": 85,
+        }
+        workout = parse_workout_detail(data)
+
+        assert workout.id == 1003
+        assert workout.title == "Interval Workout"
+        assert workout.tss_actual == 60.0
+        assert workout.tss_planned == 65.0
+        assert workout.if_actual == 0.78
+        assert workout.if_planned == 0.82
+        assert workout.normalized_power == 210.0
+        assert workout.avg_power == 160
+        assert workout.avg_hr == 150
+        assert workout.avg_cadence == 85
+        assert workout.elevation_gain == 80.0
+        assert workout.calories == 570
+        assert workout.distance_actual == 30000.0
+
 
 class TestParseWorkoutList:
     """Tests for parse_workout_list function."""
