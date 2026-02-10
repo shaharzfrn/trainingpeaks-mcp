@@ -6,28 +6,6 @@ from typing import Any, Literal
 from tp_mcp.client import TPClient, parse_workout_detail, parse_workout_list
 
 
-async def _get_athlete_id(client: TPClient) -> int | None:
-    """Get athlete ID from profile."""
-    if client.athlete_id:
-        return client.athlete_id
-
-    response = await client.get("/users/v3/user")
-    if response.success and response.data:
-        # API returns nested structure: { user: { ... } }
-        user_data = response.data.get("user", response.data)
-
-        # Try personId first, then athletes array
-        athlete_id = user_data.get("personId")
-        if not athlete_id:
-            athletes = user_data.get("athletes", [])
-            if athletes:
-                athlete_id = athletes[0].get("athleteId")
-
-        client.athlete_id = athlete_id
-        return athlete_id
-    return None
-
-
 async def tp_get_workouts(
     start_date: str,
     end_date: str,
@@ -71,7 +49,7 @@ async def tp_get_workouts(
         }
 
     async with TPClient() as client:
-        athlete_id = await _get_athlete_id(client)
+        athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
             return {
                 "isError": True,
@@ -149,7 +127,7 @@ async def tp_get_workout(workout_id: str) -> dict[str, Any]:
         Dict with full workout details including structure.
     """
     async with TPClient() as client:
-        athlete_id = await _get_athlete_id(client)
+        athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
             return {
                 "isError": True,

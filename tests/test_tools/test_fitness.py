@@ -14,9 +14,6 @@ class TestTpGetFitness:
     @pytest.mark.asyncio
     async def test_get_fitness_success(self):
         """Test successful fitness data retrieval."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         fitness_response = APIResponse(
             success=True,
             data=[
@@ -28,9 +25,8 @@ class TestTpGetFitness:
 
         with patch("tp_mcp.tools.fitness.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(return_value=user_response)
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
             mock_instance.post = AsyncMock(return_value=fitness_response)
-            mock_instance.athlete_id = None
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_fitness(days=30)
@@ -46,16 +42,12 @@ class TestTpGetFitness:
     @pytest.mark.asyncio
     async def test_get_fitness_empty_data(self):
         """Test fitness retrieval with no data."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         fitness_response = APIResponse(success=True, data=[])
 
         with patch("tp_mcp.tools.fitness.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(return_value=user_response)
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
             mock_instance.post = AsyncMock(return_value=fitness_response)
-            mock_instance.athlete_id = None
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_fitness(days=30)
@@ -78,16 +70,9 @@ class TestTpGetFitness:
     @pytest.mark.asyncio
     async def test_get_fitness_auth_error(self):
         """Test fitness retrieval with auth error."""
-        user_response = APIResponse(
-            success=False,
-            error_code=ErrorCode.AUTH_INVALID,
-            message="Auth failed",
-        )
-
         with patch("tp_mcp.tools.fitness.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(return_value=user_response)
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=None)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_fitness(days=30)

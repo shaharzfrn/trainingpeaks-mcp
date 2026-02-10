@@ -14,24 +14,6 @@ ANALYSIS_TIMEOUT = 60.0
 ANALYSIS_DATA_DIR = Path(tempfile.gettempdir()) / "tp-mcp" / "analysis"
 
 
-async def _get_athlete_id(client: TPClient) -> int | None:
-    """Get athlete ID from profile."""
-    if client.athlete_id:
-        return client.athlete_id
-
-    response = await client.get("/users/v3/user")
-    if response.success and response.data:
-        user_data = response.data.get("user", response.data)
-        athlete_id = user_data.get("personId")
-        if not athlete_id:
-            athletes = user_data.get("athletes", [])
-            if athletes:
-                athlete_id = athletes[0].get("athleteId")
-        client.athlete_id = athlete_id
-        return athlete_id
-    return None
-
-
 def _save_analysis_json(workout_id: int, data: dict[str, Any]) -> str:
     """Save full analysis data to a JSON file.
 
@@ -65,7 +47,7 @@ async def tp_analyze_workout(workout_id: str) -> dict[str, Any]:
         }
 
     async with TPClient() as client:
-        athlete_id = await _get_athlete_id(client)
+        athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
             return {
                 "isError": True,
@@ -73,7 +55,16 @@ async def tp_analyze_workout(workout_id: str) -> dict[str, Any]:
                 "message": "Could not get athlete ID. Re-authenticate.",
             }
 
-        # Reuse the Bearer token that TPClient already obtained
+        # Ensure we have a valid token (athlete_id may have come from cache
+        # without triggering token exchange)
+        token_result = await client._ensure_access_token()
+        if not token_result.success:
+            return {
+                "isError": True,
+                "error_code": "AUTH_INVALID",
+                "message": token_result.message or "Failed to obtain access token.",
+            }
+
         access_token = client._token_cache.access_token
         if not access_token:
             return {

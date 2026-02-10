@@ -18,17 +18,15 @@ TEST_ACCESS_TOKEN = "gAAAA_test_access_token_12345"
 def _mock_tp_client(athlete_id=TEST_ATHLETE_ID):
     """Create a mock TPClient with cached access token."""
     mock_client = AsyncMock()
-    mock_client.athlete_id = None
+    mock_client.ensure_athlete_id = AsyncMock(return_value=athlete_id)
+    mock_client._ensure_access_token = AsyncMock(
+        return_value=APIResponse(success=True)
+    )
 
-    # TPClient already handles token exchange; mock the cached token
     mock_token_cache = MagicMock()
     mock_token_cache.access_token = TEST_ACCESS_TOKEN
     mock_client._token_cache = mock_token_cache
 
-    user_response = APIResponse(
-        success=True, data={"user": {"personId": athlete_id}}
-    )
-    mock_client.get = AsyncMock(return_value=user_response)
     return mock_client
 
 
@@ -133,13 +131,7 @@ class TestTpAnalyzeWorkout:
     @pytest.mark.asyncio
     async def test_no_athlete_id(self):
         mock_client = AsyncMock()
-        mock_client.athlete_id = None
-        mock_token_cache = MagicMock()
-        mock_token_cache.access_token = TEST_ACCESS_TOKEN
-        mock_client._token_cache = mock_token_cache
-        mock_client.get = AsyncMock(
-            return_value=APIResponse(success=False, message="Auth failed")
-        )
+        mock_client.ensure_athlete_id = AsyncMock(return_value=None)
 
         with patch("tp_mcp.tools.analyze.TPClient") as mock_tp:
             mock_tp.return_value.__aenter__.return_value = mock_client
@@ -151,16 +143,14 @@ class TestTpAnalyzeWorkout:
     @pytest.mark.asyncio
     async def test_no_access_token(self):
         mock_client = AsyncMock()
-        mock_client.athlete_id = None
+        mock_client.ensure_athlete_id = AsyncMock(return_value=TEST_ATHLETE_ID)
+        mock_client._ensure_access_token = AsyncMock(
+            return_value=APIResponse(success=True)
+        )
 
         mock_token_cache = MagicMock()
         mock_token_cache.access_token = None
         mock_client._token_cache = mock_token_cache
-
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": TEST_ATHLETE_ID}}
-        )
-        mock_client.get = AsyncMock(return_value=user_response)
 
         with patch("tp_mcp.tools.analyze.TPClient") as mock_tp:
             mock_tp.return_value.__aenter__.return_value = mock_client

@@ -6,24 +6,6 @@ from typing import Any
 from tp_mcp.client import TPClient
 
 
-async def _get_athlete_id(client: TPClient) -> int | None:
-    """Get athlete ID from profile."""
-    if client.athlete_id:
-        return client.athlete_id
-
-    response = await client.get("/users/v3/user")
-    if response.success and response.data:
-        user_data = response.data.get("user", response.data)
-        athlete_id = user_data.get("personId")
-        if not athlete_id:
-            athletes = user_data.get("athletes", [])
-            if athletes:
-                athlete_id = athletes[0].get("athleteId")
-        client.athlete_id = athlete_id
-        return athlete_id
-    return None
-
-
 async def tp_get_fitness(
     days: int = 90,
     start_date: str | None = None,
@@ -73,7 +55,7 @@ async def tp_get_fitness(
         }
 
     async with TPClient() as client:
-        athlete_id = await _get_athlete_id(client)
+        athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
             return {
                 "isError": True,

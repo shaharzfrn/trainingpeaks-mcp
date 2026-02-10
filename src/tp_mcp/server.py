@@ -159,7 +159,10 @@ TOOLS = [
     ),
     Tool(
         name="tp_analyze_workout",
-        description="Get workout analysis: metrics, zones, laps. Saves full time-series to JSON file. Use after tp_get_workouts.",
+        description=(
+            "Get workout analysis: metrics, zones, laps."
+            " Saves full time-series to JSON file. Use after tp_get_workouts."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
