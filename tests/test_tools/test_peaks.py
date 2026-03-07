@@ -14,9 +14,6 @@ class TestTpGetPeaks:
     @pytest.mark.asyncio
     async def test_get_peaks_success(self):
         """Test successful peaks retrieval."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         peaks_response = APIResponse(
             success=True,
             data=[
@@ -28,8 +25,8 @@ class TestTpGetPeaks:
 
         with patch("tp_mcp.tools.peaks.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(side_effect=[user_response, peaks_response])
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=peaks_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_peaks(sport="Bike", pr_type="power20min", days=365)
@@ -53,9 +50,6 @@ class TestTpGetPeaks:
     @pytest.mark.asyncio
     async def test_get_peaks_run_sport(self):
         """Test peaks for running sport."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         peaks_response = APIResponse(
             success=True,
             data=[
@@ -65,8 +59,8 @@ class TestTpGetPeaks:
 
         with patch("tp_mcp.tools.peaks.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(side_effect=[user_response, peaks_response])
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=peaks_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_peaks(sport="Run", pr_type="speed5K", days=365)
@@ -78,15 +72,12 @@ class TestTpGetPeaks:
     @pytest.mark.asyncio
     async def test_get_peaks_empty_data(self):
         """Test peaks with no records."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         peaks_response = APIResponse(success=True, data=[])
 
         with patch("tp_mcp.tools.peaks.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(side_effect=[user_response, peaks_response])
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=peaks_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_peaks(sport="Bike", pr_type="power5min", days=30)
@@ -101,9 +92,6 @@ class TestTpGetWorkoutPrs:
     @pytest.mark.asyncio
     async def test_get_workout_prs_success(self):
         """Test successful workout PRs retrieval."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         prs_response = APIResponse(
             success=True,
             data={
@@ -118,8 +106,8 @@ class TestTpGetWorkoutPrs:
 
         with patch("tp_mcp.tools.peaks.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(side_effect=[user_response, prs_response])
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=prs_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_workout_prs("1001")
@@ -133,15 +121,12 @@ class TestTpGetWorkoutPrs:
     @pytest.mark.asyncio
     async def test_get_workout_prs_no_records(self):
         """Test workout PRs with no records."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         prs_response = APIResponse(success=True, data=None)
 
         with patch("tp_mcp.tools.peaks.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(side_effect=[user_response, prs_response])
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=prs_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_workout_prs("9999")
@@ -153,16 +138,9 @@ class TestTpGetWorkoutPrs:
     @pytest.mark.asyncio
     async def test_get_workout_prs_auth_error(self):
         """Test workout PRs with auth error."""
-        user_response = APIResponse(
-            success=False,
-            error_code=ErrorCode.AUTH_INVALID,
-            message="Auth failed",
-        )
-
         with patch("tp_mcp.tools.peaks.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(return_value=user_response)
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=None)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_workout_prs("1001")

@@ -14,19 +14,14 @@ class TestTpGetWorkouts:
     @pytest.mark.asyncio
     async def test_get_workouts_success(self, mock_api_responses):
         """Test successful workout retrieval."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         workouts_response = APIResponse(
             success=True, data=mock_api_responses["workouts"]
         )
 
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(
-                side_effect=[user_response, workouts_response]
-            )
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=workouts_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_workouts("2025-01-08", "2025-01-09")
@@ -38,19 +33,14 @@ class TestTpGetWorkouts:
     @pytest.mark.asyncio
     async def test_get_workouts_filter_completed(self, mock_api_responses):
         """Test filtering for completed workouts only."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         workouts_response = APIResponse(
             success=True, data=mock_api_responses["workouts"]
         )
 
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(
-                side_effect=[user_response, workouts_response]
-            )
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=workouts_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_workouts(
@@ -88,17 +78,12 @@ class TestTpGetWorkouts:
     @pytest.mark.asyncio
     async def test_get_workouts_date_range_at_limit(self, mock_api_responses):
         """Test with date range exactly at 90 days."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         workouts_response = APIResponse(success=True, data=[])
 
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(
-                side_effect=[user_response, workouts_response]
-            )
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=workouts_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             # 90 days exactly should work
@@ -113,19 +98,14 @@ class TestTpGetWorkout:
     @pytest.mark.asyncio
     async def test_get_workout_success(self, mock_api_responses):
         """Test successful single workout retrieval."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         workout_response = APIResponse(
             success=True, data=mock_api_responses["workout_detail"]
         )
 
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(
-                side_effect=[user_response, workout_response]
-            )
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=workout_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_workout("1001")
@@ -138,9 +118,6 @@ class TestTpGetWorkout:
     @pytest.mark.asyncio
     async def test_get_workout_not_found(self):
         """Test workout not found."""
-        user_response = APIResponse(
-            success=True, data={"user": {"personId": 123}}
-        )
         workout_response = APIResponse(
             success=False,
             error_code=ErrorCode.NOT_FOUND,
@@ -149,10 +126,8 @@ class TestTpGetWorkout:
 
         with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
             mock_instance = AsyncMock()
-            mock_instance.get = AsyncMock(
-                side_effect=[user_response, workout_response]
-            )
-            mock_instance.athlete_id = None
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.get = AsyncMock(return_value=workout_response)
             mock_client.return_value.__aenter__.return_value = mock_instance
 
             result = await tp_get_workout("9999")
