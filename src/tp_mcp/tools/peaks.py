@@ -4,7 +4,10 @@ import logging
 from datetime import date, timedelta
 from typing import Any, Literal
 
+from pydantic import ValidationError
+
 from tp_mcp.client import TPClient
+from tp_mcp.tools._validation import PeaksInput, WorkoutIdInput, format_validation_error
 
 logger = logging.getLogger("tp-mcp")
 
@@ -63,13 +66,14 @@ async def tp_get_peaks(
     Returns:
         Dict with ranked list of personal records.
     """
-    # Validate pr_type
-    valid_types = BIKE_PR_TYPES if sport == "Bike" else RUN_PR_TYPES
-    if pr_type not in valid_types:
+    try:
+        params = PeaksInput(sport=sport, pr_type=pr_type, days=days)
+    except (ValidationError, ValueError) as e:
+        msg = format_validation_error(e) if isinstance(e, ValidationError) else str(e)
         return {
             "isError": True,
             "error_code": "VALIDATION_ERROR",
-            "message": f"Invalid pr_type '{pr_type}' for {sport}. Valid types: {valid_types}",
+            "message": msg,
         }
 
     async with TPClient() as client:
@@ -82,7 +86,7 @@ async def tp_get_peaks(
             }
 
         end_date = date.today()
-        start_date = end_date - timedelta(days=days)
+        start_date = end_date - timedelta(days=params.days)
 
         endpoint = f"/personalrecord/v2/athletes/{athlete_id}/{sport}"
         params = {
@@ -146,6 +150,16 @@ async def tp_get_workout_prs(workout_id: str) -> dict[str, Any]:
     Returns:
         Dict with personal records from that workout.
     """
+    try:
+        validated = WorkoutIdInput(workout_id=workout_id)
+    except (ValidationError, ValueError) as e:
+        msg = format_validation_error(e) if isinstance(e, ValidationError) else str(e)
+        return {
+            "isError": True,
+            "error_code": "VALIDATION_ERROR",
+            "message": msg,
+        }
+
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
@@ -155,7 +169,7 @@ async def tp_get_workout_prs(workout_id: str) -> dict[str, Any]:
                 "message": "Could not get athlete ID. Re-authenticate.",
             }
 
-        endpoint = f"/personalrecord/v2/athletes/{athlete_id}/workouts/{workout_id}"
+        endpoint = f"/personalrecord/v2/athletes/{athlete_id}/workouts/{validated.workout_id}"
         params = {"displayPeaksForBasic": "true"}
 
         response = await client.get(endpoint, params=params)

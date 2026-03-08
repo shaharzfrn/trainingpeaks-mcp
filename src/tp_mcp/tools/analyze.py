@@ -7,8 +7,10 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from pydantic import ValidationError
 
 from tp_mcp.client import TPClient, parse_workout_analysis
+from tp_mcp.tools._validation import WorkoutIdInput, format_validation_error
 
 logger = logging.getLogger("tp-mcp")
 
@@ -41,13 +43,15 @@ async def tp_analyze_workout(workout_id: str) -> dict[str, Any]:
         Dict with totals, data channels, lap data, and path to full data file.
     """
     try:
-        wid = int(workout_id)
-    except (ValueError, TypeError):
+        validated = WorkoutIdInput(workout_id=workout_id)
+    except (ValidationError, ValueError) as e:
+        msg = format_validation_error(e) if isinstance(e, ValidationError) else str(e)
         return {
             "isError": True,
             "error_code": "VALIDATION_ERROR",
-            "message": f"Invalid workout_id: {workout_id}. Must be a numeric ID.",
+            "message": msg,
         }
+    wid = validated.workout_id
 
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()

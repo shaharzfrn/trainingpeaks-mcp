@@ -172,6 +172,68 @@ class TestTpCreateWorkout:
         assert payload["totalTimePlanned"] == 1.0  # 60 min -> 1.0 hours
 
     @pytest.mark.asyncio
+    async def test_create_workout_optional_fields(self):
+        """Test that distance_km and tss_planned are passed to API when provided."""
+        create_response = APIResponse(
+            success=True,
+            data={
+                "workoutId": 5002,
+                "title": "Long Ride",
+                "workoutDay": "2026-02-01T00:00:00",
+            },
+        )
+
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.post = AsyncMock(return_value=create_response)
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            result = await tp_create_workout(
+                date_str="2026-02-01",
+                sport="Bike",
+                title="Long Ride",
+                duration_minutes=180,
+                distance_km=100.5,
+                tss_planned=250.0,
+            )
+
+        assert result["success"] is True
+        payload = mock_instance.post.call_args[1]["json"]
+        assert payload["distancePlanned"] == 100.5
+        assert payload["tssPlanned"] == 250.0
+
+    @pytest.mark.asyncio
+    async def test_create_workout_optional_fields_omitted(self):
+        """Test that optional fields are not in payload when None."""
+        create_response = APIResponse(
+            success=True,
+            data={
+                "workoutId": 5003,
+                "title": "Easy Run",
+                "workoutDay": "2026-02-01T00:00:00",
+            },
+        )
+
+        with patch("tp_mcp.tools.workouts.TPClient") as mock_client:
+            mock_instance = AsyncMock()
+            mock_instance.ensure_athlete_id = AsyncMock(return_value=123)
+            mock_instance.post = AsyncMock(return_value=create_response)
+            mock_client.return_value.__aenter__.return_value = mock_instance
+
+            result = await tp_create_workout(
+                date_str="2026-02-01",
+                sport="Run",
+                title="Easy Run",
+                duration_minutes=30,
+            )
+
+        assert result["success"] is True
+        payload = mock_instance.post.call_args[1]["json"]
+        assert "distancePlanned" not in payload
+        assert "tssPlanned" not in payload
+
+    @pytest.mark.asyncio
     async def test_create_workout_invalid_date(self):
         """Test with invalid date format."""
         result = await tp_create_workout(

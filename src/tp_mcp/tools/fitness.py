@@ -4,7 +4,10 @@ import logging
 from datetime import date, timedelta
 from typing import Any
 
+from pydantic import ValidationError
+
 from tp_mcp.client import TPClient
+from tp_mcp.tools._validation import FitnessInput, format_validation_error
 
 logger = logging.getLogger("tp-mcp")
 
@@ -28,34 +31,24 @@ async def tp_get_fitness(
     Returns:
         Dict with daily CTL, ATL, TSB values and current fitness summary.
     """
-    # Parse dates if provided, otherwise use days from today
     try:
-        if start_date and end_date:
-            query_start = date.fromisoformat(start_date)
-            query_end = date.fromisoformat(end_date)
-            if query_start > query_end:
-                return {
-                    "isError": True,
-                    "error_code": "VALIDATION_ERROR",
-                    "message": "start_date must be before end_date",
-                }
-            query_days = (query_end - query_start).days
-        else:
-            if days < 1 or days > 365:
-                return {
-                    "isError": True,
-                    "error_code": "VALIDATION_ERROR",
-                    "message": "days must be between 1 and 365",
-                }
-            query_end = date.today()
-            query_start = query_end - timedelta(days=days)
-            query_days = days
-    except ValueError:
+        params = FitnessInput(days=days, start_date=start_date, end_date=end_date)
+    except (ValidationError, ValueError) as e:
+        msg = format_validation_error(e) if isinstance(e, ValidationError) else str(e)
         return {
             "isError": True,
             "error_code": "VALIDATION_ERROR",
-            "message": "Invalid date format. Use YYYY-MM-DD.",
+            "message": msg,
         }
+
+    if params.start_date and params.end_date:
+        query_start = params.start_date
+        query_end = params.end_date
+        query_days = (query_end - query_start).days
+    else:
+        query_end = date.today()
+        query_start = query_end - timedelta(days=params.days)
+        query_days = params.days
 
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()

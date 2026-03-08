@@ -202,6 +202,14 @@ TOOLS = [
                     "type": "string",
                     "description": "Optional workout description.",
                 },
+                "distance_km": {
+                    "type": "number",
+                    "description": "Optional planned distance in km.",
+                },
+                "tss_planned": {
+                    "type": "number",
+                    "description": "Optional planned TSS.",
+                },
             },
             "required": ["date", "sport", "title", "duration_minutes"],
         },
@@ -283,6 +291,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 title=arguments["title"],
                 duration_minutes=arguments["duration_minutes"],
                 description=arguments.get("description"),
+                distance_km=arguments.get("distance_km"),
+                tss_planned=arguments.get("tss_planned"),
             )
 
         elif name == "tp_analyze_workout":

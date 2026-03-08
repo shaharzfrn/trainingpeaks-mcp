@@ -1,10 +1,17 @@
 """TOOL-03, TOOL-04 & TOOL-08: tp_get_workouts, tp_get_workout, tp_create_workout."""
 
 import logging
-from datetime import date
 from typing import Any, Literal
 
+from pydantic import ValidationError
+
 from tp_mcp.client import TPClient, parse_workout_detail, parse_workout_list
+from tp_mcp.tools._validation import (
+    CreateWorkoutInput,
+    DateRangeInput,
+    WorkoutIdInput,
+    format_validation_error,
+)
 
 logger = logging.getLogger("tp-mcp")
 
@@ -34,31 +41,14 @@ async def tp_get_workouts(
     Returns:
         Dict with workouts list, count, and date_range.
     """
-    # Validate dates
     try:
-        start = date.fromisoformat(start_date)
-        end = date.fromisoformat(end_date)
-    except ValueError as e:
+        params = DateRangeInput(start_date=start_date, end_date=end_date)
+    except (ValidationError, ValueError) as e:
+        msg = format_validation_error(e) if isinstance(e, ValidationError) else str(e)
         return {
             "isError": True,
             "error_code": "VALIDATION_ERROR",
-            "message": f"Invalid date format: {e}. Use YYYY-MM-DD.",
-        }
-
-    if start > end:
-        return {
-            "isError": True,
-            "error_code": "VALIDATION_ERROR",
-            "message": "start_date must be before or equal to end_date",
-        }
-
-    # Limit date range to prevent massive queries
-    max_days = 90
-    if (end - start).days > max_days:
-        return {
-            "isError": True,
-            "error_code": "VALIDATION_ERROR",
-            "message": f"Date range too large. Max {max_days} days. Use smaller queries.",
+            "message": msg,
         }
 
     async with TPClient() as client:
@@ -70,9 +60,8 @@ async def tp_get_workouts(
                 "message": "Could not get athlete ID. Re-authenticate.",
             }
 
-        # Format dates for API
-        start_str = start.strftime("%Y-%m-%d")
-        end_str = end.strftime("%Y-%m-%d")
+        start_str = params.start_date.isoformat()
+        end_str = params.end_date.isoformat()
 
         endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts/{start_str}/{end_str}"
         response = await client.get(endpoint)
@@ -140,6 +129,16 @@ async def tp_get_workout(workout_id: str) -> dict[str, Any]:
     Returns:
         Dict with full workout details including structure.
     """
+    try:
+        validated = WorkoutIdInput(workout_id=workout_id)
+    except (ValidationError, ValueError) as e:
+        msg = format_validation_error(e) if isinstance(e, ValidationError) else str(e)
+        return {
+            "isError": True,
+            "error_code": "VALIDATION_ERROR",
+            "message": msg,
+        }
+
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()
         if not athlete_id:
@@ -149,7 +148,7 @@ async def tp_get_workout(workout_id: str) -> dict[str, Any]:
                 "message": "Could not get athlete ID. Re-authenticate.",
             }
 
-        endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts/{workout_id}"
+        endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts/{validated.workout_id}"
         response = await client.get(endpoint)
 
         if response.is_error:
@@ -212,6 +211,8 @@ async def tp_create_workout(
     title: str,
     duration_minutes: int,
     description: str | None = None,
+    distance_km: float | None = None,
+    tss_planned: float | None = None,
 ) -> dict[str, Any]:
     """Create a planned workout.
 
@@ -221,29 +222,31 @@ async def tp_create_workout(
         title: Workout title.
         duration_minutes: Planned duration in minutes.
         description: Optional workout description.
+        distance_km: Optional planned distance in kilometres.
+        tss_planned: Optional planned Training Stress Score.
 
     Returns:
         Dict with created workout details or error.
     """
-    # Validate date
     try:
-        workout_date = date.fromisoformat(date_str)
-    except ValueError as e:
+        params = CreateWorkoutInput(
+            date=date_str,
+            sport=sport,
+            title=title,
+            duration_minutes=duration_minutes,
+            description=description,
+            distance_km=distance_km,
+            tss_planned=tss_planned,
+        )
+    except (ValidationError, ValueError) as e:
+        msg = format_validation_error(e) if isinstance(e, ValidationError) else str(e)
         return {
             "isError": True,
             "error_code": "VALIDATION_ERROR",
-            "message": f"Invalid date format: {e}. Use YYYY-MM-DD.",
+            "message": msg,
         }
 
-    # Validate sport
-    if sport not in SPORT_TYPE_MAP:
-        return {
-            "isError": True,
-            "error_code": "VALIDATION_ERROR",
-            "message": f"Unknown sport: {sport}. Use one of: {', '.join(SPORT_TYPE_MAP)}.",
-        }
-
-    family_id, type_id = SPORT_TYPE_MAP[sport]
+    family_id, type_id = SPORT_TYPE_MAP[params.sport]
 
     async with TPClient() as client:
         athlete_id = await client.ensure_athlete_id()
@@ -254,17 +257,20 @@ async def tp_create_workout(
                 "message": "Could not get athlete ID. Re-authenticate.",
             }
 
-        # Build payload
         payload: dict[str, Any] = {
             "athleteId": athlete_id,
-            "workoutDay": f"{workout_date.isoformat()}T00:00:00",
+            "workoutDay": f"{params.date.isoformat()}T00:00:00",
             "workoutTypeFamilyId": family_id,
             "workoutTypeValueId": type_id,
-            "title": title,
-            "totalTimePlanned": duration_minutes / 60.0,
+            "title": params.title,
+            "totalTimePlanned": params.duration_minutes / 60.0,
         }
-        if description:
-            payload["description"] = description
+        if params.description:
+            payload["description"] = params.description
+        if params.distance_km is not None:
+            payload["distancePlanned"] = params.distance_km
+        if params.tss_planned is not None:
+            payload["tssPlanned"] = params.tss_planned
 
         endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts"
         response = await client.post(endpoint, json=payload)
