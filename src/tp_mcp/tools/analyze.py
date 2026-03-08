@@ -1,6 +1,7 @@
 """Tool for workout analysis via the Peaksware analysis API."""
 
 import json
+import logging
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,8 @@ from typing import Any
 import httpx
 
 from tp_mcp.client import TPClient, parse_workout_analysis
+
+logger = logging.getLogger("tp-mcp")
 
 ANALYSIS_API_BASE = "https://api.peakswaresb.com"
 ANALYSIS_TIMEOUT = 60.0
@@ -96,11 +99,12 @@ async def tp_analyze_workout(workout_id: str) -> dict[str, Any]:
                 "error_code": "NETWORK_ERROR",
                 "message": "Analysis request timed out.",
             }
-        except httpx.RequestError as e:
+        except httpx.RequestError:
+            logger.exception("Network error during workout analysis")
             return {
                 "isError": True,
                 "error_code": "NETWORK_ERROR",
-                "message": f"Network error: {e}",
+                "message": "A network error occurred.",
             }
 
         if response.status_code == 401:
@@ -133,25 +137,24 @@ async def tp_analyze_workout(workout_id: str) -> dict[str, Any]:
 
     try:
         analysis = parse_workout_analysis(raw_data)
-    except Exception as e:
+    except Exception:
+        logger.exception("Failed to parse workout analysis")
         return {
             "isError": True,
             "error_code": "API_ERROR",
-            "message": f"Failed to parse workout analysis: {e}",
+            "message": "Failed to parse workout analysis.",
         }
 
     # Save full raw data (including time-series) to file
     data_file = _save_analysis_json(wid, raw_data)
 
     # Return summary inline, point to file for full data
-    totals = {
-        t.name: {"value": t.value, "unit": t.unit}
-        for t in analysis.totals
-    }
+    totals = {t.name: {"value": t.value, "unit": t.unit} for t in analysis.totals}
 
     channels = [
         {
-            k: v for k, v in {
+            k: v
+            for k, v in {
                 "identifier": ch.identifier,
                 "name": ch.name,
                 "unit": ch.unit,
@@ -159,7 +162,8 @@ async def tp_analyze_workout(workout_id: str) -> dict[str, Any]:
                 "max": ch.max,
                 "average": ch.average,
                 "zones": ch.zones,
-            }.items() if v is not None
+            }.items()
+            if v is not None
         }
         for ch in analysis.data_elements
     ]

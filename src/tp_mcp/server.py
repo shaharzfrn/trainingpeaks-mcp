@@ -234,7 +234,7 @@ async def list_tools() -> list[Tool]:
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
-    logger.info(f"Tool call: {name}")
+    logger.info("Tool call: %s", name)
 
     try:
         result: dict[str, Any]
@@ -304,12 +304,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
-    except Exception as e:
-        logger.exception(f"Error in tool {name}")
+    except Exception:
+        logger.exception("Error in tool %s", name)
         error_result = {
             "isError": True,
             "error_code": "API_ERROR",
-            "message": str(e),
+            "message": "An internal error occurred. Check server logs.",
         }
         return [TextContent(type="text", text=json.dumps(error_result, indent=2))]
 
@@ -327,10 +327,10 @@ async def _validate_auth_on_startup() -> bool:
 
     result = await validate_auth(cred.cookie)
     if result.is_valid:
-        logger.info(f"Authenticated as {result.email} (athlete_id: {result.athlete_id})")
+        logger.info("Authentication valid (athlete_id: %s)", result.athlete_id)
         return True
     else:
-        logger.warning(f"Authentication invalid: {result.message}")
+        logger.warning("Authentication invalid: %s", result.message)
         return False
 
 
@@ -362,6 +362,6 @@ def run_server() -> int:
     except KeyboardInterrupt:
         logger.info("Server stopped")
         return 0
-    except Exception as e:
-        logger.exception(f"Server error: {e}")
+    except Exception:
+        logger.exception("Server error")
         return 1

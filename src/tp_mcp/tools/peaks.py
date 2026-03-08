@@ -1,20 +1,50 @@
 """TOOL-05: tp_get_peaks - Get personal records by sport and type."""
 
+import logging
 from datetime import date, timedelta
 from typing import Any, Literal
 
 from tp_mcp.client import TPClient
 
+logger = logging.getLogger("tp-mcp")
+
 # Valid PR types by sport
 BIKE_PR_TYPES = [
-    "power5sec", "power1min", "power5min", "power10min", "power20min", "power60min", "power90min",
-    "hR5sec", "hR1min", "hR5min", "hR10min", "hR20min", "hR60min", "hR90min",
+    "power5sec",
+    "power1min",
+    "power5min",
+    "power10min",
+    "power20min",
+    "power60min",
+    "power90min",
+    "hR5sec",
+    "hR1min",
+    "hR5min",
+    "hR10min",
+    "hR20min",
+    "hR60min",
+    "hR90min",
 ]
 
 RUN_PR_TYPES = [
-    "hR5sec", "hR1min", "hR5min", "hR10min", "hR20min", "hR60min", "hR90min",
-    "speed400Meter", "speed800Meter", "speed1K", "speed1Mi", "speed5K",
-    "speed5Mi", "speed10K", "speed10Mi", "speedHalfMarathon", "speedMarathon", "speed50K",
+    "hR5sec",
+    "hR1min",
+    "hR5min",
+    "hR10min",
+    "hR20min",
+    "hR60min",
+    "hR90min",
+    "speed400Meter",
+    "speed800Meter",
+    "speed1K",
+    "speed1Mi",
+    "speed5K",
+    "speed5Mi",
+    "speed10K",
+    "speed10Mi",
+    "speedHalfMarathon",
+    "speedMarathon",
+    "speed50K",
 ]
 
 
@@ -81,13 +111,15 @@ async def tp_get_peaks(
         try:
             records = []
             for record in response.data:
-                records.append({
-                    "rank": record.get("rank"),
-                    "value": record.get("value"),
-                    "workout_id": record.get("workoutId"),
-                    "workout_title": record.get("workoutTitle"),
-                    "date": record.get("workoutDate", "").split("T")[0],
-                })
+                records.append(
+                    {
+                        "rank": record.get("rank"),
+                        "value": record.get("value"),
+                        "workout_id": record.get("workoutId"),
+                        "workout_title": record.get("workoutTitle"),
+                        "date": record.get("workoutDate", "").split("T")[0],
+                    }
+                )
 
             return {
                 "sport": sport,
@@ -96,11 +128,12 @@ async def tp_get_peaks(
                 "records": records,
             }
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to parse personal records")
             return {
                 "isError": True,
                 "error_code": "API_ERROR",
-                "message": f"Failed to parse personal records: {e}",
+                "message": "Failed to parse personal records.",
             }
 
 
@@ -175,9 +208,10 @@ async def tp_get_workout_prs(workout_id: str) -> dict[str, Any]:
                 "speed_records": speed_records if speed_records else None,
             }
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to parse personal records")
             return {
                 "isError": True,
                 "error_code": "API_ERROR",
-                "message": f"Failed to parse personal records: {e}",
+                "message": "Failed to parse personal records.",
             }

@@ -1,9 +1,12 @@
 """TOOL-06: tp_get_fitness - Get CTL/ATL/TSB fitness data."""
 
+import logging
 from datetime import date, timedelta
 from typing import Any
 
 from tp_mcp.client import TPClient
+
+logger = logging.getLogger("tp-mcp")
 
 
 async def tp_get_fitness(
@@ -47,11 +50,11 @@ async def tp_get_fitness(
             query_end = date.today()
             query_start = query_end - timedelta(days=days)
             query_days = days
-    except ValueError as e:
+    except ValueError:
         return {
             "isError": True,
             "error_code": "VALIDATION_ERROR",
-            "message": f"Invalid date format. Use YYYY-MM-DD. Error: {e}",
+            "message": "Invalid date format. Use YYYY-MM-DD.",
         }
 
     async with TPClient() as client:
@@ -97,13 +100,15 @@ async def tp_get_fitness(
             # Format daily data
             daily_data = []
             for entry in data:
-                daily_data.append({
-                    "date": entry.get("workoutDay", "").split("T")[0],
-                    "tss": entry.get("tssActual", 0),
-                    "ctl": round(entry.get("ctl", 0), 1),
-                    "atl": round(entry.get("atl", 0), 1),
-                    "tsb": round(entry.get("tsb", 0), 1),
-                })
+                daily_data.append(
+                    {
+                        "date": entry.get("workoutDay", "").split("T")[0],
+                        "tss": entry.get("tssActual", 0),
+                        "ctl": round(entry.get("ctl", 0), 1),
+                        "atl": round(entry.get("atl", 0), 1),
+                        "tsb": round(entry.get("tsb", 0), 1),
+                    }
+                )
 
             # Get current (latest) values
             current = None
@@ -124,11 +129,12 @@ async def tp_get_fitness(
                 "daily_data": daily_data,
             }
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to parse fitness data")
             return {
                 "isError": True,
                 "error_code": "API_ERROR",
-                "message": f"Failed to parse fitness data: {e}",
+                "message": "Failed to parse fitness data.",
             }
 
 

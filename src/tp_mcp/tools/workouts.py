@@ -1,9 +1,12 @@
 """TOOL-03, TOOL-04 & TOOL-08: tp_get_workouts, tp_get_workout, tp_create_workout."""
 
+import logging
 from datetime import date
 from typing import Any, Literal
 
 from tp_mcp.client import TPClient, parse_workout_detail, parse_workout_list
+
+logger = logging.getLogger("tp-mcp")
 
 # Maps sport name to (workoutTypeFamilyId, workoutTypeValueId)
 SPORT_TYPE_MAP: dict[str, tuple[int, int]] = {
@@ -119,11 +122,12 @@ async def tp_get_workouts(
                 "date_range": {"start": start_date, "end": end_date},
             }
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to parse workouts")
             return {
                 "isError": True,
                 "error_code": "API_ERROR",
-                "message": f"Failed to parse workouts: {e}",
+                "message": "Failed to parse workouts.",
             }
 
 
@@ -193,11 +197,12 @@ async def tp_get_workout(workout_id: str) -> dict[str, Any]:
                 "completed": workout.completed,
             }
 
-        except Exception as e:
+        except Exception:
+            logger.exception("Failed to parse workout")
             return {
                 "isError": True,
                 "error_code": "API_ERROR",
-                "message": f"Failed to parse workout: {e}",
+                "message": "Failed to parse workout.",
             }
 
 
