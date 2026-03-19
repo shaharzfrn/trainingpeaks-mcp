@@ -23,20 +23,22 @@ from tp_mcp.tools.structure import (
 logger = logging.getLogger("tp-mcp")
 
 # Maps sport name to (workoutTypeFamilyId, workoutTypeValueId)
+# IDs confirmed from GET /fitness/v6/workouttypes
 SPORT_TYPE_MAP: dict[str, tuple[int, int]] = {
     "Swim": (1, 1),
     "Bike": (2, 2),
     "Run": (3, 3),
     "Brick": (4, 4),
     "Crosstrain": (5, 5),
-    "Walk": (6, 6),
-    "Strength": (7, 7),
-    "Rowing": (8, 8),
-    "XCSki": (9, 9),
-    "Other": (10, 10),
-    "Custom": (11, 11),
-    "DayOff": (12, 12),
-    "MtnBike": (13, 13),
+    "Race": (6, 6),
+    "DayOff": (7, 7),
+    "MtnBike": (8, 8),
+    "Strength": (9, 9),
+    "Custom": (10, 10),
+    "XCSki": (11, 11),
+    "Rowing": (12, 12),
+    "Walk": (13, 13),
+    "Other": (100, 100),
 }
 
 
