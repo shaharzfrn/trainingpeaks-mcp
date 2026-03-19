@@ -337,9 +337,11 @@ async def tp_create_workout(
             "athleteId": athlete_id,
             "workoutDay": f"{params.date.isoformat()}T00:00:00",
             "workoutTypeFamilyId": family_id,
-            "workoutTypeValueId": params.subtype_id if params.subtype_id else type_id,
+            "workoutTypeValueId": type_id,
             "title": params.title,
         }
+        if params.subtype_id is not None:
+            payload["workoutSubTypeId"] = params.subtype_id
 
         if effective_duration is not None:
             payload["totalTimePlanned"] = effective_duration / 60.0
