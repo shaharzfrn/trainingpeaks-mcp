@@ -6,8 +6,6 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-import httpx
-
 from tp_mcp.client import TPClient
 
 FILE_DATA_DIR = Path(tempfile.gettempdir()) / "tp-mcp" / "files"
@@ -220,49 +218,19 @@ async def tp_download_workout_file(
                 "message": "Could not get athlete ID. Re-authenticate.",
             }
 
-        token_result = await client._ensure_access_token()
-        if not token_result.success:
-            return {
-                "isError": True,
-                "error_code": token_result.error_code.value if token_result.error_code else "AUTH_INVALID",
-                "message": token_result.message or "Failed to obtain access token.",
-            }
-
-        await client._ensure_client()
-        await client._throttle()
-        assert client._client is not None
-
         endpoint = f"/fitness/v6/athletes/{athlete_id}/workouts/{workout_id}/rawfiledata/{file_id}"
-        url = f"{client.base_url}{endpoint}"
-        headers = {"Authorization": f"Bearer {client._token_cache.access_token}", "Accept": "*/*"}
+        response = await client.get_raw(endpoint)
 
-        try:
-            response = await client._client.request("GET", url=url, headers=headers)
-        except httpx.TimeoutException:
+        if response.is_error:
+            if response.error_code is not None and response.error_code.value == "NOT_FOUND":
+                return {"isError": True, "error_code": "NOT_FOUND", "message": f"Workout file {file_id} not found."}
             return {
                 "isError": True,
-                "error_code": "NETWORK_ERROR",
-                "message": "Request timed out. Check your network connection.",
-            }
-        except httpx.RequestError as e:
-            return {"isError": True, "error_code": "NETWORK_ERROR", "message": f"Network error: {e}"}
-
-        if response.status_code == 401:
-            return {
-                "isError": True,
-                "error_code": "AUTH_EXPIRED",
-                "message": "Session expired or invalid. Run 'tp-mcp auth' to re-authenticate.",
-            }
-        if response.status_code == 404:
-            return {"isError": True, "error_code": "NOT_FOUND", "message": f"Workout file {file_id} not found."}
-        if response.status_code != 200:
-            return {
-                "isError": True,
-                "error_code": "API_ERROR",
-                "message": f"API error: {response.status_code} - {response.text}",
+                "error_code": response.error_code.value if response.error_code else "API_ERROR",
+                "message": response.message,
             }
 
-        filename = _parse_content_disposition_filename(response.headers.get("Content-Disposition"))
+        filename = _parse_content_disposition_filename(response.content_disposition)
         content = response.content
         if output_path:
             target = Path(output_path)
@@ -286,7 +254,7 @@ async def tp_download_workout_file(
             "workout_id": workout_id,
             "file_id": file_id,
             "file_name": filename,
-            "content_type": response.headers.get("Content-Type"),
+            "content_type": response.content_type,
             "size_bytes": len(content),
             "saved_to": saved_to,
             "message": "Workout file downloaded successfully.",
