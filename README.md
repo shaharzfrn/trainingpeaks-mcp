@@ -30,7 +30,7 @@ Ask your AI assistant things like:
 | `tp_get_workouts` | List workouts in a date range (max 90 days) |
 | `tp_get_workout` | Get full details for a single workout |
 | `tp_create_workout` | Create a workout with optional interval structure, auto-computed IF/TSS |
-| `tp_update_workout` | Update any field of an existing workout |
+| `tp_update_workout` | Update any field of an existing workout, including structured intervals |
 | `tp_delete_workout` | Delete a workout |
 | `tp_copy_workout` | Copy a workout to a new date (preserves structure and planned fields) |
 | `tp_reorder_workouts` | Reorder workouts on a given day |
@@ -212,7 +212,7 @@ Create workouts with full interval structure. The server auto-computes duration,
 }
 ```
 
-The LLM builds this JSON naturally from conversation - just say "build me 4x8min sweet spot with 2min rest".
+The LLM builds this JSON naturally from conversation - just say "build me 4x8min sweet spot with 2min rest". The same simplified `structure` format also works with `tp_update_workout`.
 
 ## What is MCP?
 
