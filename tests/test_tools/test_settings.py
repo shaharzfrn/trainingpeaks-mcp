@@ -164,8 +164,13 @@ class TestUpdateFTP:
         assert result["success"] is True
         zones = result["zones"]
         assert len(zones) == 6
-        # Falls back to hardcoded ratios
+        # Falls back to hardcoded ratios: 0.56, 0.76, 0.91, 1.06, 1.21
         assert zones[0]["maximum"] == round(300 * 0.56)
+        assert zones[1]["maximum"] == round(300 * 0.76)
+        assert zones[2]["maximum"] == round(300 * 0.91)
+        assert zones[3]["maximum"] == round(300 * 1.06)
+        assert zones[4]["maximum"] == round(300 * 1.21)
+        assert zones[5]["maximum"] == 2000
 
     @pytest.mark.asyncio
     async def test_ftp_validation(self):
