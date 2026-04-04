@@ -28,8 +28,8 @@ logger = logging.getLogger("tp-mcp")
 class StructurePayload(NamedTuple):
     wire_structure: dict | None
     duration_minutes: float | None
-    tss: float | None
     intensity_factor: float | None
+    tss: float | None
     error: str | None
 
 
