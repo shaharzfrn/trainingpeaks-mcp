@@ -1310,6 +1310,7 @@ async def run_server_async(transport: str = "stdio", host: str = "0.0.0.0", port
         try:
             from mcp.server.sse import SseServerTransport
             from starlette.applications import Starlette
+            from starlette.responses import Response
             from starlette.routing import Mount, Route
             import uvicorn
         except ImportError as e:
@@ -1330,6 +1331,7 @@ async def run_server_async(transport: str = "stdio", host: str = "0.0.0.0", port
                     streams[1],
                     server.create_initialization_options(),
                 )
+            return Response()
 
         starlette_app = Starlette(
             routes=[
