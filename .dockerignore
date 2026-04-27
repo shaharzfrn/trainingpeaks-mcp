@@ -11,4 +11,5 @@ tests/
 docs/
 uv.lock
 cowork.png
-*.md
+docs/
+PROGRESS.md
