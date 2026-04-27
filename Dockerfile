@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir ".[http]"
 RUN useradd --system --no-create-home appuser
 USER appuser
 
-EXPOSE 8080
+EXPOSE 8001
 
 ENTRYPOINT ["tp-mcp", "serve", "--transport", "sse"]
-CMD ["--host", "0.0.0.0", "--port", "8080"]
+CMD ["--host", "0.0.0.0", "--port", "8001"]
