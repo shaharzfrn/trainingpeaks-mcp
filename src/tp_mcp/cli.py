@@ -154,15 +154,20 @@ def cmd_auth_clear() -> int:
     return 0
 
 
-def cmd_serve() -> int:
+def cmd_serve(transport: str = "stdio", host: str = "0.0.0.0", port: int = 8080) -> int:
     """Start the MCP server.
+
+    Args:
+        transport: Transport type ('stdio' or 'sse').
+        host: Host to bind to when using SSE transport.
+        port: Port to listen on when using SSE transport.
 
     Returns:
         Exit code.
     """
     from tp_mcp.server import run_server
 
-    return run_server()
+    return run_server(transport=transport, host=host, port=port)
 
 
 def cmd_config() -> int:
@@ -211,12 +216,18 @@ def cmd_help() -> int:
     print("  auth-clear            Clear stored cookie")
     print("  config                Output Claude Desktop config snippet")
     print("  serve                 Start the MCP server")
+    print("    --transport X       Transport type: stdio (default) or sse")
+    print("    --host X            Host to bind (SSE only, default: 0.0.0.0)")
+    print("    --port X            Port to listen on (SSE only, default: 8080)")
     print("  help                  Show this help message")
     print()
     print("Examples:")
     print("  tp-mcp auth                      # Manual cookie entry")
     print("  tp-mcp auth --from-browser auto  # Auto-detect browser")
     print("  tp-mcp auth --from-browser chrome")
+    print("  tp-mcp serve                     # stdio transport (default)")
+    print("  tp-mcp serve --transport sse     # HTTP/SSE on 0.0.0.0:8080")
+    print("  tp-mcp serve --transport sse --host 127.0.0.1 --port 9000")
     print()
     return 0
 
@@ -245,11 +256,36 @@ def main() -> int:
                 return 1
         return cmd_auth(from_browser=from_browser)
 
+    if command == "serve":
+        transport = "stdio"
+        host = "0.0.0.0"
+        port = 8080
+        args = sys.argv[2:]
+        i = 0
+        while i < len(args):
+            if args[i] == "--transport" and i + 1 < len(args):
+                transport = args[i + 1]
+                i += 2
+            elif args[i] == "--host" and i + 1 < len(args):
+                host = args[i + 1]
+                i += 2
+            elif args[i] == "--port" and i + 1 < len(args):
+                try:
+                    port = int(args[i + 1])
+                except ValueError:
+                    print(f"Error: --port must be an integer, got {args[i + 1]!r}")
+                    return 1
+                i += 2
+            else:
+                print(f"Error: Unknown argument: {args[i]!r}")
+                print("Run 'tp-mcp help' for usage.")
+                return 1
+        return cmd_serve(transport=transport, host=host, port=port)
+
     commands = {
         "auth-status": cmd_auth_status,
         "auth-clear": cmd_auth_clear,
         "config": cmd_config,
-        "serve": cmd_serve,
         "help": cmd_help,
         "--help": cmd_help,
         "-h": cmd_help,

@@ -1294,23 +1294,62 @@ async def _validate_auth_on_startup() -> bool:
         return False
 
 
-async def run_server_async() -> None:
+async def run_server_async(transport: str = "stdio", host: str = "0.0.0.0", port: int = 8080) -> None:
     """Run the MCP server (async)."""
     logger.info("Starting TrainingPeaks MCP Server")
     await _validate_auth_on_startup()
 
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream,
-            write_stream,
-            server.create_initialization_options(),
+    if transport == "stdio":
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(
+                read_stream,
+                write_stream,
+                server.create_initialization_options(),
+            )
+    elif transport in ("sse", "http"):
+        try:
+            from mcp.server.sse import SseServerTransport
+            from starlette.applications import Starlette
+            from starlette.routing import Mount, Route
+            import uvicorn
+        except ImportError as e:
+            logger.error(
+                "HTTP/SSE transport requires extra dependencies. "
+                "Install with: pip install tp-mcp[http]"
+            )
+            raise ImportError("Missing HTTP/SSE dependencies. Run: pip install tp-mcp[http]") from e
+
+        sse = SseServerTransport("/messages/")
+
+        async def handle_sse(request):
+            async with sse.connect_sse(
+                request.scope, request.receive, request._send
+            ) as streams:
+                await server.run(
+                    streams[0],
+                    streams[1],
+                    server.create_initialization_options(),
+                )
+
+        starlette_app = Starlette(
+            routes=[
+                Route("/sse", endpoint=handle_sse),
+                Mount("/messages/", app=sse.handle_post_message),
+            ]
         )
 
+        logger.info("Serving HTTP/SSE on http://%s:%d/sse", host, port)
+        config = uvicorn.Config(starlette_app, host=host, port=port, log_level="warning")
+        uv_server = uvicorn.Server(config)
+        await uv_server.serve()
+    else:
+        raise ValueError(f"Unknown transport: {transport!r}. Use 'stdio' or 'sse'.")
 
-def run_server() -> int:
+
+def run_server(transport: str = "stdio", host: str = "0.0.0.0", port: int = 8080) -> int:
     """Run the MCP server (entry point)."""
     try:
-        asyncio.run(run_server_async())
+        asyncio.run(run_server_async(transport=transport, host=host, port=port))
         return 0
     except KeyboardInterrupt:
         logger.info("Server stopped")
