@@ -1333,8 +1333,12 @@ async def run_server_async(transport: str = "stdio", host: str = "0.0.0.0", port
                 )
             return Response()
 
+        async def handle_health(request):
+            return Response(content='{"status":"ok"}', media_type="application/json")
+
         starlette_app = Starlette(
             routes=[
+                Route("/health", endpoint=handle_health),
                 Route("/sse", endpoint=handle_sse),
                 Mount("/messages/", app=sse.handle_post_message),
             ]
